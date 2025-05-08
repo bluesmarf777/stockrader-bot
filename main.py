@@ -1,4 +1,4 @@
-from pytz import utc
+
 import yfinance as yf
 import pandas as pd
 import requests
@@ -8,6 +8,7 @@ import asyncio
 import logging
 from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from pytz import utc
 
 # 설정
 logging.basicConfig(level=logging.INFO)
@@ -110,14 +111,13 @@ async def send_alert():
 
     await bot.send_message(chat_id=CHAT_ID, text=msg)
 
-# FastAPI root
-app = FastAPI()
-
+# FastAPI 라우터
 @app.get("/")
 async def root():
     return {"message": "StockRadar bot is running."}
 
+# 스케줄러 스타트
 @app.on_event("startup")
 async def startup_event():
-    scheduler.add_job(send_alert, 'interval', minutes=10)
+    scheduler.add_job(lambda: asyncio.create_task(send_alert()), 'interval', minutes=10)
     scheduler.start()
