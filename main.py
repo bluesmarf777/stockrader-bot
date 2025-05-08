@@ -109,7 +109,7 @@ async def send_alert():
     else:
         msg += "정보 없음"
 
-    await bot.send_message(chat_id=CHAT_ID, text=msg)
+    bot.send_message(chat_id=CHAT_ID, text=msg)
 
 # FastAPI 라우터
 @app.get("/")
