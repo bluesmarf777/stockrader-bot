@@ -1,4 +1,4 @@
-
+from pytz import utc
 import yfinance as yf
 import pandas as pd
 import requests
@@ -15,7 +15,7 @@ TOKEN = "7958883184:AAF3Q4WBjShZZZu4KMPFGiZe_vIBVDA_C_8"
 CHAT_ID = 7631224187
 bot = Bot(token=TOKEN)
 app = FastAPI()
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=utc)
 
 # 한국 주식 목록
 def get_korean_stocks():
