@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 from datetime import datetime
 from telegram import Bot
 import asyncio
@@ -8,7 +9,6 @@ from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 import aiohttp
-import os
 
 # 설정
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +43,8 @@ def analyze_upbit():
         t_url = "https://api.upbit.com/v1/ticker?markets="
         markets = requests.get(m_url).json()
         krw = [m['market'] for m in markets if m['market'].startswith("KRW-")]
-        current = {coin['market']: coin['trade_price'] for coin in requests.get(t_url + ",".join(krw)).json()}
+        tickers = requests.get(t_url + ",".join(krw)).json()
+        current = {coin['market']: coin.get('trade_price') for coin in tickers}
 
         prev = load_coin_prices()
         save_coin_prices(current)
@@ -56,20 +57,25 @@ def analyze_upbit():
             "-3~-5%": [], "-5~-10%": [], "-10% 이하": []
         }
 
-        for market, now_price in current.items():
-            if market not in prev:
-                continue
-            before = prev[market]
+        for market in krw:
+            now_price = current.get(market)
+            before = prev.get(market)
             if before in [None, 0] or now_price is None:
                 continue
             change = ((now_price - before) / before) * 100
             name = market.split("-")[1]
-            if change >= 10: result["+10% 이상"].append(name)
-            elif 5 <= change < 10: result["+5~+10%"].append(name)
-            elif 3 <= change < 5: result["+3~+5%"].append(name)
-            elif -5 < change <= -3: result["-3~-5%"].append(name)
-            elif -10 < change <= -5: result["-5~-10%"].append(name)
-            elif change <= -10: result["-10% 이하"].append(name)
+            if change >= 10:
+                result["+10% 이상"].append(name)
+            elif 5 <= change < 10:
+                result["+5~+10%"].append(name)
+            elif 3 <= change < 5:
+                result["+3~+5%"].append(name)
+            elif -5 < change <= -3:
+                result["-3~-5%"].append(name)
+            elif -10 < change <= -5:
+                result["-5~-10%"].append(name)
+            elif change <= -10:
+                result["-10% 이하"].append(name)
 
         return result
     except Exception as e:
@@ -80,14 +86,47 @@ async def send_alert():
     print(f"[{now}] send_alert 작동 시작")
 
     msg = "[📊 StockRadar 코인 알림]\n\n"
-    coins = analyze_upbit()
     msg += "🪙 코인 10분간 급등/급락\n"
-    if isinstance(coins, dict):
-        for k, v in coins.items():
-            if v:
-                msg += f"{k}: {', '.join(v[:5])}\n"
+
+    result = analyze_upbit()
+
+    if isinstance(result, dict):
+        has_any = False
+        prev = load_coin_prices()
+        m_url = "https://api.upbit.com/v1/market/all"
+        t_url = "https://api.upbit.com/v1/ticker?markets="
+        markets = requests.get(m_url).json()
+        krw = [m['market'] for m in markets if m['market'].startswith("KRW-")]
+        tickers = requests.get(t_url + ",".join(krw)).json()
+        current = {coin['market']: coin.get('trade_price') for coin in tickers}
+
+        for label, coin_list in result.items():
+            if coin_list:
+                has_any = True
+                msg += f"{label}: {', '.join(coin_list)}\n"
+
+        if not has_any:
+            price_diff = []
+            for market in krw:
+                before = prev.get(market)
+                now_price = current.get(market)
+                if before in [None, 0] or now_price is None:
+                    continue
+                change = ((now_price - before) / before) * 100
+                name = market.split("-")[1]
+                price_diff.append((change, name))
+
+            if price_diff:
+                price_diff.sort()
+                most_down = price_diff[0]
+                most_up = price_diff[-1]
+                msg += "\n※ 참고용 최대 상승 종목: {} ({:.2f}%)\n".format(most_up[1], most_up[0])
+                msg += "※ 참고용 최대 하락 종목: {} ({:.2f}%)\n".format(most_down[1], most_down[0])
+            else:
+                msg += "\n※ 분석 가능한 코인 데이터 없음\n"
+
     else:
-        msg += coins
+        msg += result
 
     try:
         bot.send_message(chat_id=CHAT_ID, text=msg)
