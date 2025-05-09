@@ -161,6 +161,6 @@ async def trigger_alert():
 
 @app.on_event("startup")
 async def startup_event():
-    scheduler.add_job(lambda: asyncio.create_task(send_alert()), 'interval', minutes=10)
+    scheduler.add_job((send_alert()), 'interval', minutes=10)
     scheduler.start()
     print("스케줄러 시작됨")
