@@ -60,7 +60,7 @@ def analyze_upbit():
             if market not in prev:
                 continue
             before = prev[market]
-            if before == 0:
+            if before in [None, 0] or now_price is None:
                 continue
             change = ((now_price - before) / before) * 100
             name = market.split("-")[1]
