@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import utc
 import aiohttp
+import os
 
 # 설정
 logging.basicConfig(level=logging.INFO)
