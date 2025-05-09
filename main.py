@@ -1,3 +1,4 @@
+
 import yfinance as yf
 import pandas as pd
 import requests
@@ -127,20 +128,20 @@ async def send_alert():
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{now}] send_alert 작동 시작")
 
-    msg = "[📊 StockRadar 자동 알림]\\n\\n"
+    msg = "[📊 StockRadar 자동 알림]\n\n"
 
     krx_jump = [res for t in [f"{code}.KS" for code in krx_name_to_code.values()] if (res := is_jump_stock(t))]
-    msg += "🇰🇷 한국 급등 종목\\n" + ("\\n".join(krx_jump) if krx_jump else "없음") + "\\n\\n"
+    msg += "🇰🇷 한국 급등 종목\n" + ("\n".join(krx_jump) if krx_jump else "없음") + "\n\n"
 
     us_jump = [res for t in us_name_to_code.values() if (res := is_jump_stock(t))]
-    msg += "🇺🇸 미국 급등 종목\\n" + ("\\n".join(us_jump) if us_jump else "없음") + "\\n\\n"
+    msg += "🇺🇸 미국 급등 종목\n" + ("\n".join(us_jump) if us_jump else "없음") + "\n\n"
 
     coins = analyze_upbit()
-    msg += "🪙 코인 10분간 급등/급락\\n"
+    msg += "🪙 코인 10분간 급등/급락\n"
     if isinstance(coins, dict):
         for k, v in coins.items():
             if v:
-                msg += f"{k}: {', '.join(v[:5])}\\n"
+                msg += f"{k}: {', '.join(v[:5])}\n"
     else:
         msg += coins  # 오류 메시지나 초기화 상태
 
@@ -152,6 +153,11 @@ async def send_alert():
 @app.get("/")
 async def root():
     return {"message": "StockRadar bot is running."}
+
+@app.get("/start")
+async def trigger_alert():
+    await send_alert()
+    return {"message": "Alert sent manually."}
 
 @app.on_event("startup")
 async def startup_event():
